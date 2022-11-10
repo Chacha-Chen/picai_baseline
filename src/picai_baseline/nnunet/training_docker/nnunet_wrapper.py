@@ -201,7 +201,9 @@ def plan_train(argv):
 
     # Set environment variables
     datadir = Path(args.data)
-    prepdir = Path(os.environ.get('prepdir', '/home/user/data'))
+    # prepdir = Path(os.environ.get('prepdir', '/home/user/data')) ##TODO chacha change it when run in docker
+    # workdir = Path('/net/scratch/chacha/workdir')
+    prepdir = Path('/net/scratch/chacha/workdir/nnUNet_preprocessed')
 
     splits_file = prepdir / args.task / 'splits_final.pkl'
 
