@@ -11,16 +11,17 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+from nnunet.inference.predict import check_input_folder_and_return_caseIDs
 import argparse
 from multiprocessing import Pool
 from pathlib import Path
 from typing import Callable, Optional, Union
-
+import os
+from batchgenerators.utilities.file_and_folder_operations import load_pickle, subfiles
 import numpy as np
 from picai_baseline.nnunet.softmax_export import \
     convert_cropped_npz_to_original_nifty
-from picai_baseline.splits.picai_nnunet import valid_splits
+from picai_baseline.splits.picai_nnunet import valid_splits ## TODO
 from picai_eval import evaluate_folder
 from picai_prep.preprocessing import crop_or_pad
 from report_guided_annotation import extract_lesion_candidates
@@ -84,10 +85,22 @@ def evaluate(
                 )
 
             # evaluate
+
+            # assert isfile(join(model, "plans.pkl")), "Folder with saved model weights must contain a plans.pkl file"
+            # expected_num_modalities = load_pickle(os.path.join(softmax_dir, "plans.pkl"))['num_modalities']
+
+            # check input folder integrity
+            # print(input_folder)
+
+            files = subfiles(softmax_dir, suffix=".nii.gz", join=False, sort=True)
+
+            maybe_case_ids = np.unique([i[:13] for i in files]).tolist()
+
+
             metrics = evaluate_folder(
                 y_det_dir=softmax_dir,
                 y_true_dir=workdir / "nnUNet_raw_data" / task / "labelsTr",
-                subject_list=valid_splits[fold]['subject_list'],
+                subject_list=maybe_case_ids,  #valid_splits[fold]['subject_list'],
                 pred_extensions=['_softmax.nii.gz'],
                 y_det_postprocess_func=softmax_postprocessing_func,
                 num_parallel_calls=5,

@@ -1,3 +1,4 @@
+#%%
 from pathlib import Path
 import argparse
 import json
@@ -12,6 +13,18 @@ from picai_prep.examples.mha2nnunet.picai_archive import \
 from tqdm import tqdm
 from picai_baseline.splits.picai_debug import nnunet_splits
 
+
+#%%
+workdir = Path('/data/chacha/picai_data/workdir')
+os.environ["prepdir"] = str(workdir / "nnUNet_preprocessed")
+os.environ["workdir"] = str(workdir)
+os.environ["imagesdir"] = '/data/chacha/picai_data/input/images'
+os.environ["labelsdir"] = '/data/chacha/picai_data/input/labels'
+os.environ["outputdir"] = '/data/chacha/picai_data/output'
+os.environ["checkpointsdir"] = str(workdir / "results")
+os.environ["nnUNet_preprocessed"] = str(workdir / "nnUNet_preprocessed")
+
+#%%
 
 # set paths
 parser = argparse.ArgumentParser()
@@ -35,9 +48,10 @@ try:
 except Exception as e:
     print(f"Parsing all arguments failed: {e}")
     print("Retrying with only the known arguments...")
+    # args, unknown = parser.parse_known_args()
     args, _ = parser.parse_known_args()
 
-
+#%%
 # parse paths
 workdir = Path(args.workdir)
 inputdir = Path(args.inputdir)
@@ -45,7 +59,7 @@ imagesdir = Path(inputdir / args.imagesdir)
 labelsdir = Path(inputdir / args.labelsdir)
 
 # settings
-task = "Task2203_picai_baseline"
+task = "Task2204_picai_baseline"
 
 # relative paths
 annotations_dir_human_expert = labelsdir / "csPCa_lesion_delineations/human_expert/resampled/"
@@ -59,7 +73,33 @@ nnUNet_splits_path = nnUNet_task_dir / "splits.json"
 
 #%%
 
-with open('/net/scratch/chacha/workdir/nnUNet_raw_data/Task2201_picai_baseline/splits.json') as fp:
-    mha2nnunet_settings = json.load(fp)
+with open(nnUNet_splits_path, "w") as fp:
+    print("writing to ", nnUNet_splits_path)
+    json.dump(nnunet_splits, fp, indent=4)
 
+print(nnunet_splits)
 # with open('/net/scratch/chacha/workdir/nnUNet_raw_data/Task2201_picai_baseline/splits.json')
+#%%
+all_img = []
+for i,fold in enumerate(nnunet_splits):
+    print(f'fold {i}')
+    all_img.extend(fold['train'])
+    all_img.extend(fold['val'])
+
+#%%
+
+data_json_path = nnUNet_task_dir / "dataset.json"
+
+with open(data_json_path, "r") as fp:
+    dataset = json.load(fp)
+#%%
+new_dataset = dataset
+new_dataset['numTraining'] = 10
+new_dataset['training'] = dataset['training'][:10]
+new_dataset['task'] = 'Task2204_picai_baseline'
+new_dataset['numTraining'] = 10
+
+#%%
+with open(data_json_path, "w") as fp:
+    print("writing to ", data_json_path)
+    json.dump(new_dataset, fp, indent=4)

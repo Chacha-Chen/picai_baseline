@@ -18,7 +18,15 @@ from nnunet.utilities.io import (checksum, path_exists, read_json,
 from picai_prep.data_utils import atomic_file_copy
 
 PLANS = 'nnUNetPlansv2.1'
+# import torch
 
+# print("Is cuda available?", torch.cuda.is_available())
+# print("Is cuDNN version:", torch.backends.cudnn.version())
+# print("cuDNN enabled? ", torch.backends.cudnn.enabled)
+# print("Device count?", torch.cuda.device_count())
+# print("Current device?", torch.cuda.current_device())
+# print(os.environ["CUDA_VISIBLE_DEVICES"])
+# print("Device name? ", torch.cuda.get_device_name(torch.cuda.current_device()))
 
 class CustomizedCarbonTracker:
     def __init__(self, logdir, enabled=True):
@@ -178,7 +186,7 @@ def plan_train(argv):
     parser.add_argument('--results', type=str, required=False)
     parser.add_argument('--network', type=str, default='3d_fullres')
     parser.add_argument('--trainer', type=str, default='nnUNetTrainerV2')
-    parser.add_argument('--trainer_kwargs', required=False, default="{}",
+    parser.add_argument('--trainer_kwargs', required=False, default="{\"max_num_epochs\":1000}",
                         help="Use a dictionary in string format to specify keyword arguments. This will get"
                              " parsed into a dictionary, the values get correctly parsed to the data format"
                              " and passed to the trainer. Example (backslash included): \n"
@@ -201,9 +209,11 @@ def plan_train(argv):
 
     # Set environment variables
     datadir = Path(args.data)
-    # prepdir = Path(os.environ.get('prepdir', '/home/user/data')) ##TODO chacha change it when run in docker
+    os.environ['prepdir'] = '/data/chacha/picai_data/workdir/nnUNet_preprocessed'
+    prepdir = Path(os.environ.get('prepdir', '/home/user/data')) ##TODO chacha change it when run in docker
     # workdir = Path('/net/scratch/chacha/workdir')
-    prepdir = Path('/net/scratch/chacha/workdir/nnUNet_preprocessed')
+    # prepdir = Path('/net/scratch/chacha/workdir/nnUNet_preprocessed')
+    # prepdir = Path('/data/chacha/picai_data/workdir/nnUNet_preprocessed')
 
     splits_file = prepdir / args.task / 'splits_final.pkl'
 
@@ -241,7 +251,7 @@ def plan_train(argv):
                 'nnUNet_plan_and_preprocess',
                 '-t', taskid,
                 '-tl', '1', '-tf', '1',
-                '--verify_dataset_integrity'
+                # '--verify_dataset_integrity'
             ]
             if not args.plan_2d and '2d' not in args.network:
                 cmd.extend(['--planner2d', 'None'])  # disable 2D planning to speed up the preprocessing phase
@@ -307,8 +317,9 @@ def plan_train(argv):
 
         # Copy split file since that is for sure available now (nnUNet_train has created
         # it the file did not exist already - unless training with "all", so still check)
-        if splits_file.exists():
-            shutil_sol.copyfile(splits_file, taskdir)
+        # TODO chacha i dont know what this is for and it throws same file error 
+        # if splits_file.exists():
+        #     shutil_sol.copyfile(splits_file, taskdir)
 
 
 def reveal_split(argv):
