@@ -18,9 +18,9 @@ from nnunet.utilities.io import (checksum, path_exists, read_json,
 from picai_prep.data_utils import atomic_file_copy
 
 PLANS = 'nnUNetPlansv2.1'
-# import torch
+import torch
 
-# print("Is cuda available?", torch.cuda.is_available())
+print("Is cuda available?", torch.cuda.is_available())
 # print("Is cuDNN version:", torch.backends.cudnn.version())
 # print("cuDNN enabled? ", torch.backends.cudnn.enabled)
 # print("Device count?", torch.cuda.device_count())

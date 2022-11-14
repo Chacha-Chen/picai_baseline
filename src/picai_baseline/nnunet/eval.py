@@ -25,6 +25,7 @@ from picai_baseline.splits.picai_nnunet import valid_splits ## TODO
 from picai_eval import evaluate_folder
 from picai_prep.preprocessing import crop_or_pad
 from report_guided_annotation import extract_lesion_candidates
+import logging
 
 try:
     import numpy.typing as npt
@@ -49,6 +50,7 @@ def evaluate(
     softmax_postprocessing_func: "Optional[Union[Callable[[npt.NDArray[np.float_]], npt.NDArray[np.float_]], str]]" = "extract_lesion_candidates",
     threshold: str = "dynamic",
     metrics_fn: str = "metrics-{checkpoint}-{threshold}.json",
+    num_parallel_calls = 5
 ):
     # input validation
     workdir = Path(workdir)
@@ -67,6 +69,7 @@ def evaluate(
 
     for fold in folds:
         print(f"Evaluating fold {fold}...")
+        
 
         for checkpoint in checkpoints:
             softmax_dir = task_dir / f"{trainer}__nnUNetPlansv2.1" / f"fold_{fold}/picai_pubtrain_predictions_{checkpoint}"
@@ -95,7 +98,7 @@ def evaluate(
             files = subfiles(softmax_dir, suffix=".nii.gz", join=False, sort=True)
 
             maybe_case_ids = np.unique([i[:13] for i in files]).tolist()
-
+            logging.info("Evaluating cases: ", maybe_case_ids)
 
             metrics = evaluate_folder(
                 y_det_dir=softmax_dir,
@@ -103,7 +106,7 @@ def evaluate(
                 subject_list=maybe_case_ids,  #valid_splits[fold]['subject_list'],
                 pred_extensions=['_softmax.nii.gz'],
                 y_det_postprocess_func=softmax_postprocessing_func,
-                num_parallel_calls=5,
+                num_parallel_calls= num_parallel_calls,
             )
 
             # save and show metrics

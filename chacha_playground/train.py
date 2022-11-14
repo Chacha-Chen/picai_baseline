@@ -13,12 +13,12 @@ import signal
 import threading
 import time
 import logging
+from picai_baseline.nnunet.eval import evaluate
+# import torch
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
-
-
-print(logger)
+# print(logger)
 
 def is_on_slurm():
     return os.environ.get("SLURM_JOB_ID") is not None
@@ -65,7 +65,7 @@ def setup_slurm():
     # print("running in slurm, ready to requeue on SIGUSR1.")
     signal.signal(signal.SIGUSR1, slurm_sigusr1_handler_fn)
     # slurm not sending the signal, so sending it myself
-    time_to_live = 30  #14300 # just a bit less than 4 hrs
+    time_to_live = 14390  #14300 # just a bit less than 4 hrs
     schedule_death(time_to_live)
 
 
@@ -84,7 +84,10 @@ def main(taskname="Task2204_picai_baseline"):
     # parser.add_argument('--scriptsdir', type=str, default=os.environ.get('SM_CHANNEL_SCRIPTS', "/scripts"))
     parser.add_argument('--outputdir', type=str, default=os.environ.get('outputdir', "/output"))
     parser.add_argument('--checkpointsdir', type=str, default=os.environ.get('checkpointsdir', "/checkpoints"))
-    parser.add_argument('--gpu', type=str, default="1")
+    parser.add_argument('--gpu', type=str, default="0")
+    parser.add_argument('--no_debug', action='store_true', help='Debug training --- overwrite validation with the same training data')
+    parser.add_argument('--do_train', action='store_true', help='Do training')
+
     # parser.add_argument('--nnUNet_n_proc_DA', type=int, default=None)
 
     args, _ = parser.parse_known_args()
@@ -115,10 +118,10 @@ def main(taskname="Task2204_picai_baseline"):
     # local_scripts_dir = workdir / "code"
 
     # descibe input data
-    print(f"workdir: {workdir}")
-    print(f"images_dir: {images_dir}")
-    print(f"labels_dir: {labels_dir}")
-    print(f"output_dir: {output_dir}")
+    logging.info(f"workdir: {workdir}")
+    logging.info(f"images_dir: {images_dir}")
+    logging.info(f"labels_dir: {labels_dir}")
+    logging.info(f"output_dir: {output_dir}")
     # print(f"scripts_dir: {local_scripts_dir}")
 
     # print("Scripts folder:", os.listdir(local_scripts_dir))
@@ -136,6 +139,13 @@ def main(taskname="Task2204_picai_baseline"):
     # check_call(cmd)
 
     # save cross-validation splits to disk
+    if not args.no_debug:
+        logging.info("Debugging mode")
+        folds = range(1)  # range(5) for 5-fold cross-validation 
+        # nnunet_splits[0]['val'] = nnunet_splits[0]['train']
+    else:
+        folds = range(5)
+    
     with open(nnUNet_splits_path, "w") as fp:
         print("writing to ", nnUNet_splits_path)
         json.dump(nnunet_splits, fp)
@@ -156,21 +166,22 @@ def main(taskname="Task2204_picai_baseline"):
     # if args.nnUNet_n_proc_DA is not None:
     #     os.environ["nnUNet_n_proc_DA"] = str(args.nnUNet_n_proc_DA)
 
-    folds = range(1)  # range(5) for 5-fold cross-validation 
+    
     ## TODO i dont need to run sequentially
-    for fold in folds:
-        print(f"Training fold {fold}...")
-        cmd = [
-            # f"CUDA_VISIBLE_DEVICES={args.gpu}",
-            "python", Path(os.environ["parent_dir"] + "/picai_baseline/src/picai_baseline/nnunet/training_docker/nnunet_wrapper.py").as_posix(),
-            "plan_train", str(taskname), workdir.as_posix(),
-            "--trainer_kwargs", "{\"max_num_epochs\":1}",
-            "--results", checkpoints_dir.as_posix(),
-            "--trainer", "nnUNetTrainerV2_Loss_FL_and_CE_checkpoints",
-            "--fold", str(fold),
-            "--custom_split", str(nnUNet_splits_path),
-        ]
-        check_call(cmd)
+    if args.do_train:
+        for fold in folds:
+            print(f"Training fold {fold}...")
+            cmd = [
+                # f"CUDA_VISIBLE_DEVICES={args.gpu}",
+                "python", Path(os.environ["parent_dir"] + "/picai_baseline/src/picai_baseline/nnunet/training_docker/nnunet_wrapper.py").as_posix(),
+                "plan_train", str(taskname), workdir.as_posix(),
+                "--trainer_kwargs", "{\"max_num_epochs\":10}",
+                "--results", checkpoints_dir.as_posix(),
+                "--trainer", "nnUNetTrainerV2_Loss_FL_and_CE_checkpoints",
+                "--fold", str(fold),
+                "--custom_split", str(nnUNet_splits_path),
+            ]
+            check_call(cmd)
 
 
     # Inference 
@@ -184,7 +195,7 @@ def main(taskname="Task2204_picai_baseline"):
             "--fold", str(fold),
             "--results", checkpoints_dir.as_posix(),
             "--input", str(workdir / "nnUNet_raw_data"/ taskname / "imagesTr"),
-            "--output", str(workdir / "results/nnUNet/3d_fullres"/ taskname/ "nnUNetTrainerV2_Loss_FL_and_CE_checkpoints__nnUNetPlansv2.1/fold_{fold}/picai_pubtrain_predictions_model_best"),
+            "--output", str(workdir / "results/nnUNet/3d_fullres"/ taskname/ f"nnUNetTrainerV2_Loss_FL_and_CE_checkpoints__nnUNetPlansv2.1/fold_{fold}/picai_pubtrain_predictions_model_best"),
             "--store_probability_maps"
         ]
         check_call(cmd)
@@ -196,21 +207,22 @@ def main(taskname="Task2204_picai_baseline"):
     # --output /output/predictions \
     # --store_probability_maps
     
-    from picai_baseline.nnunet.eval import evaluate
+    
 
     # evaluate
-    # evaluate(
-    #     task = taskname,
-    #     workdir = workdir.as_posix(),
-    #     folds=[0]
-    # )
+    metrics = evaluate(
+        task = taskname,
+        workdir = workdir.as_posix(),
+        folds=[0],
+        num_parallel_calls = 1
+    )
 
     from picai_eval import Metrics
 
     fold = 0
     checkpoint = "model_best"
     threshold = "dynamic"
-    # metric_path = str(workdir / "nnUNet_preprocessed")
+    # # metric_path = str(workdir / "nnUNet_preprocessed")
     metrics = Metrics(f"{workdir}/results/nnUNet/3d_fullres/{taskname}/nnUNetTrainerV2_Loss_FL_and_CE_checkpoints__nnUNetPlansv2.1/fold_{fold}/metrics-{checkpoint}-{threshold}.json")
     print(f"PI-CAI ranking score: {metrics.score:.4f} (50% AUROC={metrics.auroc:.4f} + 50% AP={metrics.AP:.4f})")
 
@@ -240,6 +252,8 @@ if __name__ == '__main__':
         parent_dir = '/net/scratch/chacha'
     else:
         parent_dir = '/data/chacha'
+
+
     workdir = Path(parent_dir +'/picai_data/workdir')
     os.environ["parent_dir"] = parent_dir
     os.environ["prepdir"] = str(workdir / "nnUNet_preprocessed")
