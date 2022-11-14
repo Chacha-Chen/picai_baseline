@@ -16,6 +16,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+print(logger)
+
 def is_on_slurm():
     return os.environ.get("SLURM_JOB_ID") is not None
 
@@ -58,6 +60,7 @@ def setup_slurm():
         logger.info("not running in slurm, this job will run until it finishes.")
         return
     logger.info("running in slurm, ready to requeue on SIGUSR1.")
+    print("running in slurm, ready to requeue on SIGUSR1.")
     signal.signal(signal.SIGUSR1, slurm_sigusr1_handler_fn)
     # slurm not sending the signal, so sending it myself
     time_to_live = 30  #14300 # just a bit less than 4 hrs
@@ -65,14 +68,7 @@ def setup_slurm():
 
 
 
-workdir = Path('/data/chacha/picai_data/workdir')
-os.environ["prepdir"] = str(workdir / "nnUNet_preprocessed")
-os.environ["workdir"] = str(workdir)
-os.environ["imagesdir"] = '/data/chacha/picai_data/input/images'
-os.environ["labelsdir"] = '/data/chacha/picai_data/input/labels'
-os.environ["outputdir"] = '/data/chacha/picai_data/output'
-os.environ["checkpointsdir"] = str(workdir / "results")
-os.environ["nnUNet_preprocessed"] = str(workdir / "nnUNet_preprocessed")
+
 
 
 def main(taskname="Task2204_picai_baseline"):
@@ -164,7 +160,7 @@ def main(taskname="Task2204_picai_baseline"):
         print(f"Training fold {fold}...")
         cmd = [
             # f"CUDA_VISIBLE_DEVICES={args.gpu}",
-            "python", Path("/data/chacha/picai_baseline/src/picai_baseline/nnunet/training_docker/nnunet_wrapper.py").as_posix(),
+            "python", Path(os.environ["parent_dir"] + "/picai_baseline/src/picai_baseline/nnunet/training_docker/nnunet_wrapper.py").as_posix(),
             "plan_train", str(taskname), workdir.as_posix(),
             "--trainer_kwargs", "{\"max_num_epochs\":1}",
             "--results", checkpoints_dir.as_posix(),
@@ -180,7 +176,7 @@ def main(taskname="Task2204_picai_baseline"):
     for fold in folds:
         print(f"Inference fold {fold}...")
         cmd = [
-            "python", Path("/data/chacha/picai_baseline/src/picai_baseline/nnunet/training_docker/nnunet_wrapper.py").as_posix(),
+            "python", Path(os.environ["parent_dir"] + "/picai_baseline/src/picai_baseline/nnunet/training_docker/nnunet_wrapper.py").as_posix(),
             "predict", str(taskname), 
             "--trainer", "nnUNetTrainerV2_Loss_FL_and_CE_checkpoints",
             "--fold", str(fold),
@@ -237,4 +233,18 @@ def main(taskname="Task2204_picai_baseline"):
 
 if __name__ == '__main__':
     setup_slurm()
+    # print(is_on_slurm())
+    if is_on_slurm():
+        parent_dir = '/net/scratch/chacha'
+    else:
+        parent_dir = '/data/chacha'
+    workdir = Path(parent_dir +'/picai_data/workdir')
+    os.environ["parent_dir"] = parent_dir
+    os.environ["prepdir"] = str(workdir / "nnUNet_preprocessed")
+    os.environ["workdir"] = str(workdir)
+    os.environ["imagesdir"] = parent_dir + '/picai_data/input/images'
+    os.environ["labelsdir"] = parent_dir +'/picai_data/input/labels'
+    os.environ["outputdir"] = parent_dir +'/picai_data/output'
+    os.environ["checkpointsdir"] = str(workdir / "results")
+    os.environ["nnUNet_preprocessed"] = str(workdir / "nnUNet_preprocessed")
     main()

@@ -209,7 +209,7 @@ def plan_train(argv):
 
     # Set environment variables
     datadir = Path(args.data)
-    os.environ['prepdir'] = '/data/chacha/picai_data/workdir/nnUNet_preprocessed'
+    # os.environ['prepdir'] = '/data/chacha/picai_data/workdir/nnUNet_preprocessed'
     prepdir = Path(os.environ.get('prepdir', '/home/user/data')) ##TODO chacha change it when run in docker
     # workdir = Path('/net/scratch/chacha/workdir')
     # prepdir = Path('/net/scratch/chacha/workdir/nnUNet_preprocessed')
