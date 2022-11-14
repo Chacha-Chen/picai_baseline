@@ -14,7 +14,9 @@ import threading
 import time
 import logging
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
+
 
 print(logger)
 
@@ -60,7 +62,7 @@ def setup_slurm():
         logger.info("not running in slurm, this job will run until it finishes.")
         return
     logger.info("running in slurm, ready to requeue on SIGUSR1.")
-    print("running in slurm, ready to requeue on SIGUSR1.")
+    # print("running in slurm, ready to requeue on SIGUSR1.")
     signal.signal(signal.SIGUSR1, slurm_sigusr1_handler_fn)
     # slurm not sending the signal, so sending it myself
     time_to_live = 30  #14300 # just a bit less than 4 hrs
