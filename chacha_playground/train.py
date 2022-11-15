@@ -1,5 +1,4 @@
 #  Run a basic script for testing
-
 import argparse
 import json
 import os
@@ -122,11 +121,6 @@ def main(taskname="Task2204_picai_baseline"):
     logging.info(f"images_dir: {images_dir}")
     logging.info(f"labels_dir: {labels_dir}")
     logging.info(f"output_dir: {output_dir}")
-    # print(f"scripts_dir: {local_scripts_dir}")
-
-    # print("Scripts folder:", os.listdir(local_scripts_dir))
-    # print("Images folder:", os.listdir(images_dir))
-    # print("Labels folder:", os.listdir(labels_dir))
 
     # install modified nnU-Net
     # print("Installing modified nnU-Net...")
@@ -266,4 +260,12 @@ if __name__ == '__main__':
     os.environ["checkpointsdir"] = str(workdir / "results")
     os.environ["nnUNet_preprocessed"] = str(workdir / "nnUNet_preprocessed")
     os.environ['nnUNet_raw_data_base'] = workdir.as_posix()
-    main()
+
+    # export nnUNet_raw_data_base="/net/scratch/chacha/picai_data/workdir"
+    # export nnUNet_preprocessed="/net/scratch/chacha/picai_data/workdir/nnUNet_preprocessed"
+    # export RESULTS_FOLDER="/net/scratch/chacha/picai_data/workdir/results"
+
+    # check_call("nnUNet_convert_decathlon_task -i /net/scratch/chacha/picai_data/Task05_Prostate")
+    # check_call("nnUNet_download_pretrained_model Task005_Prostate")
+    # check_call("nnUNet_print_pretrained_model_info Task005_Prostate")
+    # main()

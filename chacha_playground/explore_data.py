@@ -1,5 +1,4 @@
 #%%
-from pathlib import Path
 import argparse
 import json
 import os
@@ -13,7 +12,24 @@ from picai_prep.examples.mha2nnunet.picai_archive import \
 from tqdm import tqdm
 from picai_baseline.splits.picai_debug import nnunet_splits
 
-
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import skimage, os
+from skimage.morphology import ball, disk, dilation, binary_erosion, remove_small_objects, erosion, closing, reconstruction, binary_closing
+from skimage.measure import label,regionprops, perimeter
+from skimage.morphology import binary_dilation, binary_opening
+from skimage.filters import roberts, sobel
+from skimage import measure, feature
+from skimage.segmentation import clear_border
+from skimage import data
+from scipy import ndimage as ndi
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+import scipy.misc
+import numpy as np
+from glob import glob
+from skimage.io import imread
+# BASE_IMG_PATH=os.path.join('..','input')
 #%%
 workdir = Path('/data/chacha/picai_data/workdir')
 os.environ["prepdir"] = str(workdir / "nnUNet_preprocessed")
@@ -73,33 +89,36 @@ nnUNet_splits_path = nnUNet_task_dir / "splits.json"
 
 #%%
 
-with open(nnUNet_splits_path, "w") as fp:
-    print("writing to ", nnUNet_splits_path)
-    json.dump(nnunet_splits, fp, indent=4)
+# with open(nnUNet_splits_path, "w") as fp:
+#     print("writing to ", nnUNet_splits_path)
+#     json.dump(nnunet_splits, fp, indent=4)
 
-print(nnunet_splits)
-# with open('/net/scratch/chacha/workdir/nnUNet_raw_data/Task2201_picai_baseline/splits.json')
+# print(nnunet_splits)
+# # with open('/net/scratch/chacha/workdir/nnUNet_raw_data/Task2201_picai_baseline/splits.json')
 #%%
-all_img = []
-for i,fold in enumerate(nnunet_splits):
-    print(f'fold {i}')
-    all_img.extend(fold['train'])
-    all_img.extend(fold['val'])
-
-#%%
-
-data_json_path = nnUNet_task_dir / "dataset.json"
-
-with open(data_json_path, "r") as fp:
-    dataset = json.load(fp)
-#%%
-new_dataset = dataset
-new_dataset['numTraining'] = 10
-new_dataset['training'] = dataset['training'][:10]
-new_dataset['task'] = 'Task2204_picai_baseline'
-new_dataset['numTraining'] = 10
+# all_img = []
+# for i,fold in enumerate(nnunet_splits):
+#     print(f'fold {i}')
+#     all_img.extend(fold['train'])
+#     all_img.extend(fold['val'])
 
 #%%
-with open(data_json_path, "w") as fp:
-    print("writing to ", data_json_path)
-    json.dump(new_dataset, fp, indent=4)
+
+# data_json_path = nnUNet_task_dir / "dataset.json"
+
+# with open(data_json_path, "r") as fp:
+#     dataset = json.load(fp)
+# #%%
+# new_dataset = dataset
+# new_dataset['numTraining'] = 10
+# new_dataset['training'] = dataset['training'][:10]
+# new_dataset['task'] = 'Task2204_picai_baseline'
+# new_dataset['numTraining'] = 10
+
+# #%%
+# with open(data_json_path, "w") as fp:
+#     print("writing to ", data_json_path)
+#     json.dump(new_dataset, fp, indent=4)
+
+
+print(glob(Path(os.environ["imagesdir"],'3d_images','*')))
