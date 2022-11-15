@@ -9,7 +9,7 @@ import sys
 from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
-
+import logging
 import numpy as np
 from carbontracker.tracker import CarbonTracker
 from nnunet.utilities import shutil_sol
@@ -20,7 +20,7 @@ from picai_prep.data_utils import atomic_file_copy
 PLANS = 'nnUNetPlansv2.1'
 import torch
 
-print("Is cuda available?", torch.cuda.is_available())
+logging.debug("Is cuda available?", torch.cuda.is_available())
 # print("Is cuDNN version:", torch.backends.cudnn.version())
 # print("cuDNN enabled? ", torch.backends.cudnn.enabled)
 # print("Device count?", torch.cuda.device_count())
@@ -399,7 +399,7 @@ def _predict(args):
 
     if args.fold:
         cmd.append('-f')
-        cmd.extend(args.fold.split(','))
+        cmd.extend(args.folds.split(','))
 
     if args.checkpoint:
         cmd.append('-chk')
@@ -421,7 +421,6 @@ def predict(argv):
     # Use trained network to generate segmentation masks
     parser = argparse.ArgumentParser()
     parser.add_argument('task', type=str)
-    parser.add_argument('data', type=str)
     parser.add_argument('--input', type=str, default='/input')
     parser.add_argument('--output', type=str, default='/output')
     parser.add_argument('--results', type=str, required=True)  # Path to training results folder with model weights etc
@@ -434,9 +433,6 @@ def predict(argv):
     parser.add_argument('--disable_augmentation', action='store_true')
     parser.add_argument('--disable_patch_overlap', action='store_true')
     args = parser.parse_args(argv)
-
-    datadir = Path(args.data)
-    os.environ['nnUNet_raw_data_base'] = str(datadir)
 
     _predict(args)
 
@@ -565,8 +561,9 @@ def checkout(argv):
     return unknown
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
     # Very first argument determines action
+def nnunet_wrapper(**kwargs):
     actions = {
         'prepare': prepare,
         'plan_train': plan_train,
@@ -578,8 +575,10 @@ if __name__ == '__main__':
     }
 
     try:
-        action = actions[sys.argv[1]]
-        argv = checkout(sys.argv[2:])
+        # action = actions[sys.argv[1]]
+        # argv = checkout(sys.argv[2:])
+        action = actions[kwargs[1]]
+        argv = checkout(kwargs[2:])
     except (IndexError, KeyError):
         print('Usage: nnunet ' + '/'.join(actions.keys()) + ' ...')
     else:

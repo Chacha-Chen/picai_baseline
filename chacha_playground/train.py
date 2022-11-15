@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from subprocess import check_call
 from picai_baseline.splits.picai_debug import nnunet_splits
-
+# from nnunet_wrapper_chacha import nnunet_wrapper
 import os
 from subprocess import call
 import signal
@@ -181,6 +181,7 @@ def main(taskname="Task2204_picai_baseline"):
                 "--fold", str(fold),
                 "--custom_split", str(nnUNet_splits_path),
             ]
+            # nnunet_wrapper("plan_train", str(taskname), workdir.as_posix())
             check_call(cmd)
 
 
@@ -190,9 +191,10 @@ def main(taskname="Task2204_picai_baseline"):
         print(f"Inference fold {fold}...")
         cmd = [
             "python", Path(os.environ["parent_dir"] + "/picai_baseline/src/picai_baseline/nnunet/training_docker/nnunet_wrapper.py").as_posix(),
-            "predict", str(taskname), 
+            "predict", str(taskname), workdir.as_posix(),
             "--trainer", "nnUNetTrainerV2_Loss_FL_and_CE_checkpoints",
             "--fold", str(fold),
+            "--checkpoint", "model_best",
             "--results", checkpoints_dir.as_posix(),
             "--input", str(workdir / "nnUNet_raw_data"/ taskname / "imagesTr"),
             "--output", str(workdir / "results/nnUNet/3d_fullres"/ taskname/ f"nnUNetTrainerV2_Loss_FL_and_CE_checkpoints__nnUNetPlansv2.1/fold_{fold}/picai_pubtrain_predictions_model_best"),
@@ -263,4 +265,5 @@ if __name__ == '__main__':
     os.environ["outputdir"] = parent_dir +'/picai_data/output'
     os.environ["checkpointsdir"] = str(workdir / "results")
     os.environ["nnUNet_preprocessed"] = str(workdir / "nnUNet_preprocessed")
+    os.environ['nnUNet_raw_data_base'] = workdir.as_posix()
     main()

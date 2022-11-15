@@ -98,7 +98,7 @@ def evaluate(
             files = subfiles(softmax_dir, suffix=".nii.gz", join=False, sort=True)
 
             maybe_case_ids = np.unique([i[:13] for i in files]).tolist()
-            logging.info("Evaluating cases: ", maybe_case_ids)
+            logging.info("Evaluating cases: "+" ".join(maybe_case_ids))
 
             metrics = evaluate_folder(
                 y_det_dir=softmax_dir,

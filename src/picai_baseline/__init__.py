@@ -12,8 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-print("If you have questions or suggestions, feel free to open an issue " +
-      "at https://github.com/DIAGNijmegen/picai_baseline\n")
+# logging.("If you have questions or suggestions, feel free to open an issue " +
+#       "at https://github.com/DIAGNijmegen/picai_baseline\n")
 
 __all__ = [
     # Explicitly expose these functions for easier imports
