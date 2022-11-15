@@ -64,7 +64,7 @@ def setup_slurm():
     # print("running in slurm, ready to requeue on SIGUSR1.")
     signal.signal(signal.SIGUSR1, slurm_sigusr1_handler_fn)
     # slurm not sending the signal, so sending it myself
-    time_to_live = 14390  #14300 # just a bit less than 4 hrs
+    time_to_live = 10  #14300 # just a bit less than 4 hrs
     schedule_death(time_to_live)
 
 
@@ -268,4 +268,4 @@ if __name__ == '__main__':
     # check_call("nnUNet_convert_decathlon_task -i /net/scratch/chacha/picai_data/Task05_Prostate")
     # check_call("nnUNet_download_pretrained_model Task005_Prostate")
     # check_call("nnUNet_print_pretrained_model_info Task005_Prostate")
-    # main()
+    main()
