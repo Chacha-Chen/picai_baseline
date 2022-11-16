@@ -14,6 +14,8 @@ import time
 import logging
 from picai_baseline.nnunet.eval import evaluate
 # import torch
+from picai_eval import Metrics
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
@@ -195,34 +197,32 @@ def main(taskname="Task2203_picai_baseline"):
             "--store_probability_maps"
         ]
         check_call(cmd)
-    # nnunet predict Task2201_picai_baseline \
-    # --trainer nnUNetTrainerV2_Loss_FL_and_CE_checkpoints \
-    # --fold 0 --checkpoint model_best \
-    # --results /workdir/results \
-    # --input /input/images/ \
-    # --output /output/predictions \
-    # --store_probability_maps
-    
-    
+        # nnunet predict Task2201_picai_baseline \
+        # --trainer nnUNetTrainerV2_Loss_FL_and_CE_checkpoints \
+        # --fold 0 --checkpoint model_best \
+        # --results /workdir/results \
+        # --input /input/images/ \
+        # --output /output/predictions \
+        # --store_probability_maps
+        
+        
 
-    # evaluate
-    metrics = evaluate(
-        task = taskname,
-        workdir = workdir.as_posix(),
-        folds=[0],
-        num_parallel_calls = 1
-    )
+        # evaluate
+        metrics = evaluate(
+            task = taskname,
+            workdir = workdir.as_posix(),
+            folds=[fold],
+            num_parallel_calls = 1
+        )
 
-    from picai_eval import Metrics
+        fold = 0
+        checkpoint = "model_best"
+        threshold = "dynamic"
+        # # metric_path = str(workdir / "nnUNet_preprocessed")
+        metrics = Metrics(f"{workdir}/results/nnUNet/3d_fullres/{taskname}/nnUNetTrainerV2_Loss_FL_and_CE_checkpoints__nnUNetPlansv2.1/fold_{fold}/metrics-{checkpoint}-{threshold}.json")
+        print(f"PI-CAI ranking score: {metrics.score:.4f} (50% AUROC={metrics.auroc:.4f} + 50% AP={metrics.AP:.4f})")
 
-    fold = 0
-    checkpoint = "model_best"
-    threshold = "dynamic"
-    # # metric_path = str(workdir / "nnUNet_preprocessed")
-    metrics = Metrics(f"{workdir}/results/nnUNet/3d_fullres/{taskname}/nnUNetTrainerV2_Loss_FL_and_CE_checkpoints__nnUNetPlansv2.1/fold_{fold}/metrics-{checkpoint}-{threshold}.json")
-    print(f"PI-CAI ranking score: {metrics.score:.4f} (50% AUROC={metrics.auroc:.4f} + 50% AP={metrics.AP:.4f})")
-
-    
+        
     # python /data/chacha/picai_baseline/src/picai_baseline/nnunet/eval.py --task=Task2203_picai_baseline --workdir=/data/chacha/picai_data/workdir
 
 
