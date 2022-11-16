@@ -72,7 +72,7 @@ def setup_slurm():
 
 
 
-def main(taskname="Task2204_picai_baseline"):
+def main(taskname="Task2203_picai_baseline"):
     """Train nnU-Net semi-supervised model."""
     parser = argparse.ArgumentParser()
 
@@ -169,7 +169,7 @@ def main(taskname="Task2204_picai_baseline"):
                 # f"CUDA_VISIBLE_DEVICES={args.gpu}",
                 "python", Path(os.environ["parent_dir"] + "/picai_baseline/src/picai_baseline/nnunet/training_docker/nnunet_wrapper.py").as_posix(),
                 "plan_train", str(taskname), workdir.as_posix(),
-                "--trainer_kwargs", "{\"max_num_epochs\":10}",
+                "--trainer_kwargs", "{\"max_num_epochs\":1}",
                 "--results", checkpoints_dir.as_posix(),
                 "--trainer", "nnUNetTrainerV2_Loss_FL_and_CE_checkpoints",
                 "--fold", str(fold),
