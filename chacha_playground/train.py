@@ -12,6 +12,7 @@ import signal
 import threading
 import time
 import logging
+import socket
 from picai_baseline.nnunet.eval import evaluate
 # import torch
 from picai_eval import Metrics
@@ -66,7 +67,7 @@ def setup_slurm():
     # print("running in slurm, ready to requeue on SIGUSR1.")
     signal.signal(signal.SIGUSR1, slurm_sigusr1_handler_fn)
     # slurm not sending the signal, so sending it myself
-    time_to_live = 10  #14300 # just a bit less than 4 hrs
+    time_to_live = 14300  #14300 # just a bit less than 4 hrs
     schedule_death(time_to_live)
 
 
@@ -74,11 +75,12 @@ def setup_slurm():
 
 
 
-def main(taskname="Task2203_picai_baseline"):
+def main():
     """Train nnU-Net semi-supervised model."""
     parser = argparse.ArgumentParser()
-
     # input data and model directories
+    parser.add_argument('--task', type=str, default="Task2203_picai_baseline")
+
     parser.add_argument('--workdir', type=str, default=os.environ.get('workdir',"/workdir"))
     parser.add_argument('--imagesdir', type=str, default=os.environ.get('imagesdir', "/input/images"))
     parser.add_argument('--labelsdir', type=str, default=os.environ.get('labelsdir', "/input/picai_labels"))
@@ -88,15 +90,13 @@ def main(taskname="Task2203_picai_baseline"):
     parser.add_argument('--gpu', type=str, default="0")
     parser.add_argument('--no_debug', action='store_true', help='Debug training --- overwrite validation with the same training data')
     parser.add_argument('--do_train', action='store_true', help='Do training')
-
+    parser.add_argument('--do_eval', action='store_true', help='Do evaluation')
     # parser.add_argument('--nnUNet_n_proc_DA', type=int, default=None)
-
     args, _ = parser.parse_known_args()
-
+    
+    
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-
-
-
+    taskname = args.task
     # paths
     workdir = Path(args.workdir)
     images_dir = Path(args.imagesdir)
@@ -171,7 +171,7 @@ def main(taskname="Task2203_picai_baseline"):
                 # f"CUDA_VISIBLE_DEVICES={args.gpu}",
                 "python", Path(os.environ["parent_dir"] + "/picai_baseline/src/picai_baseline/nnunet/training_docker/nnunet_wrapper.py").as_posix(),
                 "plan_train", str(taskname), workdir.as_posix(),
-                "--trainer_kwargs", "{\"max_num_epochs\":1}",
+                "--trainer_kwargs", "{\"max_num_epochs\":20}",
                 "--results", checkpoints_dir.as_posix(),
                 "--trainer", "nnUNetTrainerV2_Loss_FL_and_CE_checkpoints",
                 "--fold", str(fold),
@@ -182,47 +182,47 @@ def main(taskname="Task2203_picai_baseline"):
 
 
     # Inference 
+    if args.do_eval:
+        for fold in folds:
+            print(f"Inference fold {fold}...")
+            cmd = [
+                "python", Path(os.environ["parent_dir"] + "/picai_baseline/src/picai_baseline/nnunet/training_docker/nnunet_wrapper.py").as_posix(),
+                "predict", str(taskname), workdir.as_posix(),
+                "--trainer", "nnUNetTrainerV2_Loss_FL_and_CE_checkpoints",
+                "--fold", str(fold),
+                "--checkpoint", "model_best",
+                "--results", checkpoints_dir.as_posix(),
+                "--input", str(workdir / "nnUNet_raw_data"/ taskname / "imagesTr"),
+                "--output", str(workdir / "results/nnUNet/3d_fullres"/ taskname/ f"nnUNetTrainerV2_Loss_FL_and_CE_checkpoints__nnUNetPlansv2.1/fold_{fold}/picai_pubtrain_predictions_model_best"),
+                "--store_probability_maps"
+            ]
+            check_call(cmd)
+            # nnunet predict Task2201_picai_baseline \
+            # --trainer nnUNetTrainerV2_Loss_FL_and_CE_checkpoints \
+            # --fold 0 --checkpoint model_best \
+            # --results /workdir/results \
+            # --input /input/images/ \
+            # --output /output/predictions \
+            # --store_probability_maps
+            
+            
 
-    for fold in folds:
-        print(f"Inference fold {fold}...")
-        cmd = [
-            "python", Path(os.environ["parent_dir"] + "/picai_baseline/src/picai_baseline/nnunet/training_docker/nnunet_wrapper.py").as_posix(),
-            "predict", str(taskname), workdir.as_posix(),
-            "--trainer", "nnUNetTrainerV2_Loss_FL_and_CE_checkpoints",
-            "--fold", str(fold),
-            "--checkpoint", "model_best",
-            "--results", checkpoints_dir.as_posix(),
-            "--input", str(workdir / "nnUNet_raw_data"/ taskname / "imagesTr"),
-            "--output", str(workdir / "results/nnUNet/3d_fullres"/ taskname/ f"nnUNetTrainerV2_Loss_FL_and_CE_checkpoints__nnUNetPlansv2.1/fold_{fold}/picai_pubtrain_predictions_model_best"),
-            "--store_probability_maps"
-        ]
-        check_call(cmd)
-        # nnunet predict Task2201_picai_baseline \
-        # --trainer nnUNetTrainerV2_Loss_FL_and_CE_checkpoints \
-        # --fold 0 --checkpoint model_best \
-        # --results /workdir/results \
-        # --input /input/images/ \
-        # --output /output/predictions \
-        # --store_probability_maps
-        
-        
+            # evaluate
+            metrics = evaluate(
+                task = taskname,
+                workdir = workdir.as_posix(),
+                folds=[fold],
+                num_parallel_calls = 1
+            )
 
-        # evaluate
-        metrics = evaluate(
-            task = taskname,
-            workdir = workdir.as_posix(),
-            folds=[fold],
-            num_parallel_calls = 1
-        )
+            fold = 0
+            checkpoint = "model_best"
+            threshold = "dynamic"
+            # # metric_path = str(workdir / "nnUNet_preprocessed")
+            metrics = Metrics(f"{workdir}/results/nnUNet/3d_fullres/{taskname}/nnUNetTrainerV2_Loss_FL_and_CE_checkpoints__nnUNetPlansv2.1/fold_{fold}/metrics-{checkpoint}-{threshold}.json")
+            print(f"PI-CAI ranking score: {metrics.score:.4f} (50% AUROC={metrics.auroc:.4f} + 50% AP={metrics.AP:.4f})")
 
-        fold = 0
-        checkpoint = "model_best"
-        threshold = "dynamic"
-        # # metric_path = str(workdir / "nnUNet_preprocessed")
-        metrics = Metrics(f"{workdir}/results/nnUNet/3d_fullres/{taskname}/nnUNetTrainerV2_Loss_FL_and_CE_checkpoints__nnUNetPlansv2.1/fold_{fold}/metrics-{checkpoint}-{threshold}.json")
-        print(f"PI-CAI ranking score: {metrics.score:.4f} (50% AUROC={metrics.auroc:.4f} + 50% AP={metrics.AP:.4f})")
-
-        
+            
     # python /data/chacha/picai_baseline/src/picai_baseline/nnunet/eval.py --task=Task2203_picai_baseline --workdir=/data/chacha/picai_data/workdir
 
 
@@ -244,7 +244,7 @@ def main(taskname="Task2203_picai_baseline"):
 if __name__ == '__main__':
     setup_slurm()
     # print(is_on_slurm())
-    if is_on_slurm():
+    if socket.gethostname() != 'bingo':
         parent_dir = '/net/scratch/chacha'
     else:
         parent_dir = '/data/chacha'

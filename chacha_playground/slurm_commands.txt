@@ -1,0 +1,17 @@
+srun -p cdac-contrib --gres=gpu:1 --cpus-per-task=8 --mem=40G  --signal=SIGUSR1@90  --open-mode=append  --exclude=a[001-004,006-008],aa[001-003],c001  --mail-type=FAIL  --mail-user=chacha0@uchicago.edu --pty bash 
+
+srun -p cdac-contrib --gres=gpu:1 --cpus-per-task=8 --mem=40G  --signal=SIGUSR1@90  --open-mode=append --mail-type=FAIL  --mail-user=chacha0@uchicago.edu --pty bash 
+
+
+--exclude=a[001-004,006-008],aa[001-003],c001  --mail-type=FAIL  --mail-user=chacha0@uchicago.edu --pty bash 
+
+
+docker run --cpus=8 --memory=64gb --shm-size=64gb --gpus='"device=0"' --rm -v /path/to/workdir:/workdir/ joeranbosma/picai_nnunet:latest nnunet plan_train Task2201_picai_baseline /workdir/ --trainer nnUNetTrainerV2_Loss_FL_and_CE_checkpoints --fold 0 --custom_split /net/scratch/chacha/workdir/nnUNet_raw_data/Task2201_picai_baseline/splits.json
+
+python nnunet_wrapper.py plan_train Task2201_picai_baseline /net/scratch/chacha/workdir/ --trainer nnUNetTrainerV2_Loss_FL_and_CE_checkpoints --fold 0 --custom_split /net/scratch/chacha/workdir/nnUNet_raw_data/Task2201_picai_baseline/splits.json
+
+python nnunet_wrapper.py reveal_split Task2201_picai_baseline /net/scratch/chacha/workdir/ --trainer nnUNetTrainerV2_Loss_FL_and_CE_checkpoints --fold 0 --custom_split /net/scratch/chacha/workdir/nnUNet_raw_data/Task2201_picai_baseline/splits.json
+
+pip3 install -e /net/scratch/chacha/nnUNet graphviz git+https://github.com/nanohanno/hiddenlayer.git@bugfix/get_trace_graph#egg=hiddenlayer carbontracker
+
+representations learned by supervised models may not align well with human intuitions

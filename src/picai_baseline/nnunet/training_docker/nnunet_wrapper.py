@@ -9,7 +9,7 @@ import sys
 from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
-
+import socket
 import numpy as np
 from carbontracker.tracker import CarbonTracker
 from nnunet.utilities import shutil_sol
@@ -209,7 +209,13 @@ def plan_train(argv):
 
     # Set environment variables
     datadir = Path(args.data)
+    if socket.gethostname() != 'bingo':
+        parent_dir = '/net/scratch/chacha'
+    else:
+        parent_dir = '/data/chacha'
+    workdir = Path(parent_dir +'/picai_data/workdir')
     # os.environ['prepdir'] = '/data/chacha/picai_data/workdir/nnUNet_preprocessed'
+    os.environ["prepdir"] = str(workdir / "nnUNet_preprocessed")
     prepdir = Path(os.environ.get('prepdir', '/home/user/data')) ##TODO chacha change it when run in docker
     # workdir = Path('/net/scratch/chacha/workdir')
     # prepdir = Path('/net/scratch/chacha/workdir/nnUNet_preprocessed')
@@ -248,7 +254,9 @@ def plan_train(argv):
             # Plans and data not available yet, run preprocessing
             print('[#] Creating plans and preprocessing data')
             cmd = [
-                'nnUNet_plan_and_preprocess',
+                # 'nnUNet_plan_and_preprocess',
+                "python",
+                "/net/scratch/chacha/nnUNet/nnunet/experiment_planning/nnUNet_plan_and_preprocess.py",
                 '-t', taskid,
                 '-tl', '1', '-tf', '1',
                 # '--verify_dataset_integrity'
@@ -286,7 +294,9 @@ def plan_train(argv):
 
         # Run training
         cmd = [
-            'nnUNet_train',
+            # 'nnUNet_train',
+            "python",
+            "/net/scratch/chacha/nnUNet/nnunet/run/run_training.py",
             args.network,
             args.trainer,
             taskid,
@@ -387,14 +397,16 @@ def _predict(args):
 
     # Run prediction script
     cmd = [
-        'nnUNet_predict',
+        # 'nnUNet_predict',
+        'python',
+        '/net/scratch/chacha/nnUNet/nnunet/inference/predict_simple.py',
         '-t', args.task,
         '-i', args.input,
         '-o', args.output,
         '-m', args.network,
         '-tr', args.trainer,
-        '--num_threads_preprocessing', '2',
-        '--num_threads_nifti_save', '1'
+        # '--num_threads_preprocessing', '1',
+        # '--num_threads_nifti_save', '1'
     ]
 
     if args.fold:
